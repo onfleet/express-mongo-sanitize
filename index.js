@@ -44,18 +44,28 @@ function has(target, allowDots) {
   return hasProhibited;
 }
 
-function _sanitize(target, options) {
+function _sanitize(target, parent, options) {
   const regex = getTestRegex(options.allowDots);
 
   let isSanitized = false;
   let replaceWith = null;
   const dryRun = Boolean(options.dryRun);
+  const allowList = options.allowList || [];
   if (!regex.test(options.replaceWith) && options.replaceWith !== '.') {
     replaceWith = options.replaceWith;
   }
 
   withEach(target, function (obj, val, key) {
     let shouldRecurse = true;
+
+    const fullPath = parent ? `${parent}.${key}` : key;
+
+    if (allowList.includes(fullPath)) {
+      return {
+        shouldRecurse: shouldRecurse,
+        key: key,
+      };
+    }
 
     if (regex.test(key)) {
       isSanitized = true;
@@ -96,12 +106,12 @@ function _sanitize(target, options) {
   };
 }
 
-function sanitize(target, options = {}) {
-  return _sanitize(target, options).target;
+function sanitize(target, parent, options = {}) {
+  return _sanitize(target, parent, options).target;
 }
 
 /**
- * @param {{replaceWith?: string, onSanitize?: function, dryRun?: boolean}} options
+ * @param {{replaceWith?: string, onSanitize?: function, dryRun?: boolean, allowList?: []string}} options
  * @returns {function}
  */
 function middleware(options = {}) {
@@ -109,7 +119,7 @@ function middleware(options = {}) {
   return function (req, res, next) {
     ['body', 'params', 'headers', 'query'].forEach(function (key) {
       if (req[key]) {
-        const { target, isSanitized } = _sanitize(req[key], options);
+        const { target, isSanitized } = _sanitize(req[key], key, options);
         req[key] = target;
         if (isSanitized && hasOnSanitize) {
           options.onSanitize({
