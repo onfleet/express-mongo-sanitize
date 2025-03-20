@@ -60,7 +60,7 @@ function _sanitize(target, parent, options) {
 
     const fullPath = parent ? `${parent}.${key}` : key;
 
-    if (allowList.includes(fullPath)) {
+    if (allowList.includes(fullPath) || key === '$$hashKey') {
       return {
         shouldRecurse: shouldRecurse,
         key: key,
